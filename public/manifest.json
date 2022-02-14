@@ -1,0 +1,30 @@
+{
+  "name": "Enhanced Webcam",
+  "description": "Enhanced Webcam.",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Open the popup"
+  },
+  "permissions": ["activeTab", "storage"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["loader.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content_script.js",
+        "assets/*.js",
+        "models/*",
+        "models/*.json",
+        "models/*.js"
+      ],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
+}
