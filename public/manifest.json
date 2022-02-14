@@ -1,6 +1,6 @@
 {
-  "name": "Enhanced Webcam",
-  "description": "Enhanced Webcam.",
+  "name": "Webcam Switcher",
+  "description": "Switch webcams based on which one you're looking at.",
   "version": "1.0",
   "manifest_version": 3,
   "action": {
