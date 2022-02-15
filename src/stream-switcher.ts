@@ -45,7 +45,11 @@ export const streamSwitcher = async (args: Arguments) => {
   const ctx = canvas.getContext("2d")!;
   let currentStreamIndex = 0;
   let checks = Date.now();
+  let stopped = false;
   const updateStream = () => {
+    if (stopped) {
+      return;
+    }
     let smallestSoFar = Infinity;
     let indexOfSmallest = 0;
     for (const [index, source] of Object.entries(sources)) {
@@ -67,15 +71,15 @@ export const streamSwitcher = async (args: Arguments) => {
     canvas.width = videoToUse.videoWidth;
     canvas.height = videoToUse.videoHeight;
     ctx.drawImage(videoToUse, 0, 0, canvas.width, canvas.height);
-    requestedAnimationFrame = requestAnimationFrame(() => updateStream());
+    requestAnimationFrame(() => updateStream());
   };
-  let requestedAnimationFrame = requestAnimationFrame(() => updateStream());
+  requestAnimationFrame(() => updateStream());
   const captured = canvas.captureStream();
   captured.addEventListener("inactive", () => {
+    stopped = true;
     sources.forEach((source) => {
       source.stop();
     });
-    cancelAnimationFrame(requestedAnimationFrame);
   });
   return captured;
 };

@@ -23,10 +23,10 @@ MediaDevices.prototype.enumerateDevices = async function () {
   }
   // We could add "Virtual VHS" or "Virtual Median Filter" and map devices with filters.
   const virtualDevice = {
-    deviceId: "virtual",
-    groupId: "uh",
+    deviceId: "enhancedWebcam",
+    groupId: "N/A",
     kind: "videoinput",
-    label: "Virtual Chrome Webcam",
+    label: "Enhanced Virtual Webcam",
   } as const;
   devices.push({
     ...virtualDevice,
@@ -42,8 +42,8 @@ MediaDevices.prototype.getUserMedia = async function (constraints) {
     "deviceId" in constraints.video
   ) {
     if (
-      constraints.video.deviceId === "virtual" ||
-      (constraints.video.deviceId as any).exact === "virtual"
+      constraints.video.deviceId === "enhancedWebcam" ||
+      (constraints.video.deviceId as any).exact === "enhancedWebcam"
     ) {
       return streamSwitcher({
         constraints,

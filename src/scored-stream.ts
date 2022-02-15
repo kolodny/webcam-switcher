@@ -25,23 +25,29 @@ export const scoredStream = (args: Arguments) => {
     modelIsReady = true;
   }, 100);
   const video = document.createElement("video");
-  let requestedAnimationFrame: number;
   const scored = {
     video,
     score: 0,
     stop: () => {
-      cancelAnimationFrame(requestedAnimationFrame);
+      stopped = true;
       for (const track of stream.getTracks()) {
         track.stop();
       }
     },
   };
-  let i = 0;
+  let stopped = false;
+  let lastChecked = 0;
   const update = async () => {
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const checkEvery = Math.floor((settings.checkInterval as number) / 16);
-    if (modelIsReady && i++ % checkEvery === 0) {
-      i = 1;
+    if (stopped) {
+      return;
+    }
+    const now = Date.now();
+    if (
+      modelIsReady &&
+      now - lastChecked > (settings.checkInterval as number)
+    ) {
+      lastChecked = now;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       try {
         const detection = await faceapi
           .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
@@ -63,7 +69,7 @@ export const scoredStream = (args: Arguments) => {
       }
     }
 
-    requestedAnimationFrame = requestAnimationFrame(() => update());
+    requestAnimationFrame(() => update());
   };
   video.addEventListener("playing", () => {
     canvas.width = video.videoWidth;
