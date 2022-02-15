@@ -67,8 +67,15 @@ export const streamSwitcher = async (args: Arguments) => {
     canvas.width = videoToUse.videoWidth;
     canvas.height = videoToUse.videoHeight;
     ctx.drawImage(videoToUse, 0, 0, canvas.width, canvas.height);
-    requestAnimationFrame(() => updateStream());
+    requestedAnimationFrame = requestAnimationFrame(() => updateStream());
   };
-  requestAnimationFrame(() => updateStream());
-  return canvas.captureStream();
+  let requestedAnimationFrame = requestAnimationFrame(() => updateStream());
+  const captured = canvas.captureStream();
+  captured.addEventListener("inactive", () => {
+    sources.forEach((source) => {
+      source.stop();
+    });
+    cancelAnimationFrame(requestedAnimationFrame);
+  });
+  return captured;
 };

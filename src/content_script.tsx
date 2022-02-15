@@ -6,7 +6,6 @@ const root = script?.dataset.root ?? "/";
 
 const settings =
   JSON.parse(script?.dataset.settings ?? "null") ?? defaultSettings;
-console.log({ settings });
 script?.remove();
 
 const enumerateDevicesFn = MediaDevices.prototype.enumerateDevices;
