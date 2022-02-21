@@ -1,4 +1,5 @@
 import { defaultSettings } from "./default-settings";
+import { mixableStream } from "./rtc";
 import { streamSwitcher } from "./stream-switcher";
 
 const script = document.querySelector<HTMLElement>("script[data-root]");
@@ -45,13 +46,67 @@ MediaDevices.prototype.getUserMedia = async function (constraints) {
       constraints.video.deviceId === "enhancedWebcam" ||
       (constraints.video.deviceId as any).exact === "enhancedWebcam"
     ) {
-      return streamSwitcher({
+      const streamConstraints = {
+        ...constraints,
+        video: {
+          ...constraints.video,
+          deviceId: { exact: videoDevices[0].deviceId },
+        },
+      };
+      const stream = await getUserMedia.call(
+        navigator.mediaDevices,
+        streamConstraints
+      );
+      const rtc = await mixableStream(stream.getTracks()[0]);
+      const makeStreams = videoDevices.map((device) => {
+        if (!constraints.video || typeof constraints.video === "boolean") {
+          return;
+        }
+        const streamConstraints = {
+          ...constraints,
+          video: {
+            ...constraints.video,
+            deviceId: { exact: device.deviceId },
+          },
+        };
+        return () =>
+          getUserMedia.call(navigator.mediaDevices, streamConstraints);
+      });
+      const sources = (
+        await Promise.all(
+          videoDevices.map(async (device) => {
+            if (!constraints.video || typeof constraints.video === "boolean") {
+              return;
+            }
+            const streamConstraints = {
+              ...constraints,
+              video: {
+                ...constraints.video,
+                deviceId: { exact: device.deviceId },
+              },
+            };
+            const stream = await getUserMedia.call(
+              navigator.mediaDevices,
+              streamConstraints
+            );
+            return stream;
+          })
+        )
+      ).filter((v): v is NonNullable<typeof v> => !!v);
+      (window as any).sources = sources;
+      (window as any).makeStreams = makeStreams;
+      (window as any).rtc = rtc;
+      // rtc.stream.
+
+      await streamSwitcher({
+        streams: sources,
         constraints,
         root,
         videoDevices,
         getUserMedia,
         settings: settings as any,
       });
+      return rtc.stream;
     }
   }
 
