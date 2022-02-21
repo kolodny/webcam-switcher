@@ -24,24 +24,11 @@ export const App: React.FC = () => {
         return (
           <div>
             <p>{setting.description}</p>
-            {
-              {
-                string: (
-                  <input
-                    type="text"
-                    defaultValue={(value as any)[name]}
-                    onChange={onChange}
-                  />
-                ),
-                number: (
-                  <input
-                    type="number"
-                    defaultValue={(value as any)[name]}
-                    onChange={onChange}
-                  />
-                ),
-              }[setting.type]
-            }
+            <input
+              type="text"
+              defaultValue={(value as any)[name]}
+              onChange={onChange}
+            />
           </div>
         );
       })}

@@ -1,6 +1,5 @@
 export type Setting = {
   description: string;
-  type: "string" | "number";
 };
 
 const defaultSettingsHelper = <T extends string>(
@@ -10,17 +9,15 @@ const defaultSettingsHelper = <T extends string>(
 export const settings = defaultSettingsHelper({
   checkInterval: {
     description: "Check interval in ms",
-    type: "number",
   },
   checksNeededToSwitch: {
     description: "How many ms to wait before switching cameras",
-    type: "number",
   },
 });
 
 export type Settings = typeof settings;
 export type SettingsValue = {
-  [K in keyof Settings]: TypeMap[Settings[K]["type"]];
+  [K in keyof Settings]: string;
 };
 
 interface TypeMap {
@@ -29,6 +26,6 @@ interface TypeMap {
 }
 
 export const defaultSettings: SettingsValue = {
-  checkInterval: 1000,
-  checksNeededToSwitch: 300,
+  checkInterval: "1000",
+  checksNeededToSwitch: "3000",
 };

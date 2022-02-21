@@ -7,7 +7,9 @@
     script.type = "module";
     script.src = src;
     script.setAttribute("data-root", root);
-    script.setAttribute("data-settings", JSON.stringify(settings));
+    if (settings) {
+      script.setAttribute("data-settings", JSON.stringify(settings));
+    }
     const head =
       document.head ||
       document.getElementsByTagName("head")[0] ||

@@ -1,85 +1,56 @@
 import { SettingsValue } from "./default-settings";
+import { rtcStream } from "./rtc-stream";
 
-import { scoredStream } from "./scored-stream";
+import { state } from "./state";
+import { streamScorer } from "./stream-scorer";
 
 interface Arguments {
   constraints: MediaStreamConstraints;
-  root: string;
-  videoDevices: MediaDeviceInfo[];
-  settings: SettingsValue;
-  getUserMedia: (
-    constraints?: MediaStreamConstraints | undefined
-  ) => Promise<MediaStream>;
 }
 
-export const streamSwitcher = async (args: Arguments) => {
-  const { constraints, root, videoDevices, getUserMedia, settings } = args;
+let DEFAULT_INDEX = 0;
 
-  const sources = (
-    await Promise.all(
-      videoDevices.map(async (device) => {
-        if (!constraints.video || typeof constraints.video === "boolean") {
-          return;
+export const streamSwitcher = async (streams: MediaStream[]) => {
+  const scorer = await streamScorer(streams);
+
+  const rtc = await rtcStream(streams[DEFAULT_INDEX].getVideoTracks()[0]);
+
+  let currentStreamIndex = DEFAULT_INDEX;
+  let switchTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
+  let updateTimeout: ReturnType<typeof setTimeout>;
+  const updateStream = async () => {
+    const bestIndex = await scorer.getBestStreamIndex();
+    if (bestIndex !== -1) {
+      if (bestIndex !== currentStreamIndex) {
+        if (!switchTimeout) {
+          switchTimeout = setTimeout(async () => {
+            // console.log(`switching from ${currentStreamIndex} to ${bestIndex}`);
+            currentStreamIndex = bestIndex;
+            rtc.replaceTrack(streams[currentStreamIndex].getVideoTracks()[0]);
+
+            switchTimeout = undefined;
+          }, +state.settings?.checksNeededToSwitch!);
         }
-        const streamConstraints = {
-          ...constraints,
-          video: {
-            ...constraints.video,
-            deviceId: { exact: device.deviceId },
-          },
-        };
-        const stream = await getUserMedia.call(
-          navigator.mediaDevices,
-          streamConstraints
-        );
-        return scoredStream({
-          stream,
-          settings,
-          root,
-        });
-      })
-    )
-  ).filter((v): v is NonNullable<typeof v> => !!v);
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d")!;
-  let currentStreamIndex = 0;
-  let checks = Date.now();
-  let stopped = false;
-  const updateStream = () => {
-    if (stopped) {
-      return;
-    }
-    let smallestSoFar = Infinity;
-    let indexOfSmallest = 0;
-    for (const [index, source] of Object.entries(sources)) {
-      const absScore = Math.abs(source.score);
-      if (absScore < smallestSoFar) {
-        smallestSoFar = absScore;
-        indexOfSmallest = +index;
+      } else {
+        if (switchTimeout) {
+          clearTimeout(switchTimeout);
+          switchTimeout = undefined;
+        }
       }
     }
-    if (indexOfSmallest !== currentStreamIndex) {
-      if (Date.now() - checks > settings.checksNeededToSwitch) {
-        currentStreamIndex = indexOfSmallest;
-        checks = Date.now();
-      }
-    } else {
-      checks = Date.now();
-    }
-    let videoToUse = sources[currentStreamIndex].video;
-    canvas.width = videoToUse.videoWidth;
-    canvas.height = videoToUse.videoHeight;
-    ctx.drawImage(videoToUse, 0, 0, canvas.width, canvas.height);
-    requestAnimationFrame(() => updateStream());
+    updateTimeout = setTimeout(
+      () => updateStream(),
+      +state.settings?.checkInterval!
+    );
   };
-  requestAnimationFrame(() => updateStream());
-  const captured = canvas.captureStream();
-  captured.addEventListener("inactive", () => {
-    stopped = true;
-    sources.forEach((source) => {
-      source.stop();
-    });
+  updateTimeout = setTimeout(
+    () => updateStream(),
+    +state.settings?.checkInterval!
+  );
+
+  rtc.stream.addEventListener("inactive", () => {
+    clearTimeout(updateTimeout);
+    scorer.stop();
   });
-  return captured;
+  return rtc.stream;
 };

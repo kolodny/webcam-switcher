@@ -1,24 +1,21 @@
 import { defaultSettings } from "./default-settings";
+import { state } from "./state";
 import { streamSwitcher } from "./stream-switcher";
 
 const script = document.querySelector<HTMLElement>("script[data-root]");
-const root = script?.dataset.root ?? "/";
 
-const settings =
+state.root = script?.dataset.root ?? "/";
+
+state.settings =
   JSON.parse(script?.dataset.settings ?? "null") ?? defaultSettings;
 script?.remove();
 
-const enumerateDevicesFn = MediaDevices.prototype.enumerateDevices;
-const getUserMedia = MediaDevices.prototype.getUserMedia;
-
-let videoDevices: MediaDeviceInfo[] = [];
-
 MediaDevices.prototype.enumerateDevices = async function () {
-  videoDevices = [];
-  const devices = await enumerateDevicesFn.call(navigator.mediaDevices);
+  state.videoDevices = [];
+  const devices = await state.enumerateDevices.call(navigator.mediaDevices);
   for (const device of devices) {
     if (device.kind === "videoinput") {
-      videoDevices.push(device);
+      state.videoDevices.push(device);
     }
   }
   // We could add "Virtual VHS" or "Virtual Median Filter" and map devices with filters.
@@ -45,15 +42,30 @@ MediaDevices.prototype.getUserMedia = async function (constraints) {
       constraints.video.deviceId === "enhancedWebcam" ||
       (constraints.video.deviceId as any).exact === "enhancedWebcam"
     ) {
-      return streamSwitcher({
-        constraints,
-        root,
-        videoDevices,
-        getUserMedia,
-        settings: settings as any,
-      });
+      const sources = (
+        await Promise.all(
+          state.videoDevices.map(async (device) => {
+            if (!constraints.video || typeof constraints.video === "boolean") {
+              return;
+            }
+            const streamConstraints = {
+              ...constraints,
+              video: {
+                ...constraints.video,
+                deviceId: { exact: device.deviceId },
+              },
+            };
+            const stream = await state.getUserMedia.call(
+              navigator.mediaDevices,
+              streamConstraints
+            );
+            return stream;
+          })
+        )
+      ).filter((v): v is NonNullable<typeof v> => !!v);
+      return streamSwitcher(sources);
     }
   }
 
-  return getUserMedia.call(navigator.mediaDevices, ...arguments);
+  return state.getUserMedia.call(navigator.mediaDevices, ...arguments);
 };
